@@ -1,4 +1,4 @@
-module github.com/Levi67/LifeOS-Core
+module lifeos
 
 go 1.26.7
 
