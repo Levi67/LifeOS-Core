@@ -1,28 +1,46 @@
 package main
 
 import (
-	"fmt"
+	"database/sql"
 	"log"
 	"net/http"
 
-	"github.com/Levi67/LifeOS-Core/internal/db"
+	_ "modernc.org/sqlite"
+
+	"lifeos/internal/core"
+	"lifeos/internal/modules/tasks"
 )
 
 func main() {
-	// Initialize SQLite database file
-	database, err := db.InitDB("./lifeos.db")
+	// 1. Core Storage Setup
+	db, err := sql.Open("sqlite", "lifeos.db")
 	if err != nil {
-		log.Fatalf("Database initialization failed: %v", err)
+		log.Fatalf("Failed to open SQLite: %v", err)
 	}
-	defer database.Close()
+	defer db.Close()
 
-	http.HandleFunc("/api/health", func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		fmt.Fprintf(w, `{"status":"ok","app":"LifeOS-Core","db":"connected"}`)
-	})
+	// 2. Router Setup
+	mux := http.NewServeMux()
 
-	fmt.Println("🚀 CoreHub server running on http://localhost:8080")
-	if err := http.ListenAndServe(":8080", nil); err != nil {
-		fmt.Printf("Server failed: %s\n", err)
+	// 3. Module Registry Initialization
+	ctx := &core.ModuleCtx{
+		DB:  db,
+		Mux: mux,
+	}
+
+	registry := core.NewRegistry()
+
+	// --- Register Modules Here ---
+	registry.Register(tasks.New())
+	// registry.Register(notes.New())  <-- Future modules are added like this!
+
+	if err := registry.InitAll(ctx); err != nil {
+		log.Fatalf("Module initialization error: %v", err)
+	}
+
+	// 4. Start Core Engine
+	log.Println("LifeOS Core Engine listening on http://localhost:8080")
+	if err := http.ListenAndServe(":8080", mux); err != nil {
+		log.Fatal(err)
 	}
 }
