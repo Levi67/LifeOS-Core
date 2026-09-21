@@ -44,6 +44,7 @@ func (m *TasksModule) Init(ctx *core.ModuleCtx) error {
 	ctx.Mux.HandleFunc("GET /api/v1/tasks", m.handleGetTasks)
 	ctx.Mux.HandleFunc("POST /api/v1/tasks", m.handleCreateTask)
 	ctx.Mux.HandleFunc("DELETE /api/v1/tasks", m.handleDeleteTask)
+	ctx.Mux.HandleFunc("PUT /api/v1/tasks", m.handleUpdateTask)
 
 	return nil
 }
@@ -125,5 +126,65 @@ func (m *TasksModule) handleDeleteTask(w http.ResponseWriter, r *http.Request) {
 
     w.WriteHeader(http.StatusNoContent)
 }
+
+func (m *TasksModule) handleUpdateTask(w http.ResponseWriter, r *http.Request) {
+	var input struct {
+		ID        int     `json:"id"`
+		Title     *string `json:"title"`
+		Completed *bool   `json:"completed"`
+	}
+
+	if err := json.NewDecoder(r.Body).Decode(&input); err != nil || input.ID <= 0 {
+		http.Error(w, "Invalid or missing task ID", http.StatusBadRequest)
+		return
+	}
+
+	// 1. Fetch current task to allow partial updates
+	var currentTitle string
+	var currentCompleted bool
+	err := m.db.QueryRow("SELECT title, completed FROM tasks WHERE id = ?", input.ID).Scan(&currentTitle, &currentCompleted)
+	if err == sql.ErrNoRows {
+		http.Error(w, "Task not found", http.StatusNotFound)
+		return
+	} else if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	// 2. Use provided values or keep existing ones
+	newTitle := currentTitle
+	if input.Title != nil {
+		newTitle = *input.Title
+	}
+
+	newCompleted := currentCompleted
+	if input.Completed != nil {
+		newCompleted = *input.Completed
+	}
+
+	// 3. Update SQLite record
+	res, err := m.db.Exec("UPDATE tasks SET title = ?, completed = ? WHERE id = ?", newTitle, newCompleted, input.ID)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	rowsAffected, err := res.RowsAffected()
+	if err != nil || rowsAffected == 0 {
+		http.Error(w, "Task not found", http.StatusNotFound)
+		return
+	}
+
+	// 4. Return updated task object
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(Task{
+		ID:        input.ID,
+		Title:     newTitle,
+		Completed: newCompleted,
+	})
+}
+
+
 
 func (m *TasksModule) parseBool(b bool) *bool { return &b }
