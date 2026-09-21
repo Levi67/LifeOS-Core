@@ -26,4 +26,12 @@ A privacy-first, local-AI-powered personal dashboard and life operating system. 
 ## ⚡ Quick Start
 
 ```bash
-!!! To be made !!!
+git clone https://github.com/Levi67/LifeOS-Core/
+
+cd LifeOS-Core
+
+air
+
+cd web
+
+npm run dev
