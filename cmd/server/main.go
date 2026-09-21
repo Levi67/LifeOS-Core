@@ -9,6 +9,7 @@ import (
 
 	"lifeos/internal/core"
 	"lifeos/internal/modules/tasks"
+	"lifeos/internal/modules/notes"
 )
 
 func main() {
@@ -32,6 +33,7 @@ func main() {
 
 	// --- Register Modules Here ---
 	registry.Register(tasks.New())
+	registry.Register(notes.New())
 	// registry.Register(notes.New())  <-- Future modules are added like this!
 
 	if err := registry.InitAll(ctx); err != nil {
