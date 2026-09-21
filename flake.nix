@@ -27,6 +27,9 @@
           sqlite             # Local database CLI
           golangci-lint      # Comprehensive linter
           direnv
+
+          gcc 
+          tree-sitter
         ];
 
         shellHook = ''
