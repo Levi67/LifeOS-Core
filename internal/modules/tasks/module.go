@@ -43,6 +43,7 @@ func (m *TasksModule) Init(ctx *core.ModuleCtx) error {
 	// 2. Register API endpoints directly on core router
 	ctx.Mux.HandleFunc("GET /api/v1/tasks", m.handleGetTasks)
 	ctx.Mux.HandleFunc("POST /api/v1/tasks", m.handleCreateTask)
+	ctx.Mux.HandleFunc("DELETE /api/v1/tasks", m.handleDeleteTask)
 
 	return nil
 }
@@ -91,6 +92,38 @@ func (m *TasksModule) handleCreateTask(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
 	json.NewEncoder(w).Encode(Task{ID: int(id), Title: input.Title, Completed: false})
+}
+
+func (m *TasksModule) handleDeleteTask(w http.ResponseWriter, r *http.Request) {
+    var input struct {
+        ID int `json:"id"`
+    }
+
+    if err := json.NewDecoder(r.Body).Decode(&input); err != nil || input.ID <= 0 {
+        http.Error(w, "Invalid or missing task ID", http.StatusBadRequest)
+        return
+    }
+
+    res, err := m.db.Exec("DELETE FROM tasks WHERE id = ?", input.ID)
+    if err != nil {
+        http.Error(w, err.Error(), http.StatusInternalServerError)
+        return
+    }
+
+    // Check how many rows were actually deleted
+    rowsAffected, err := res.RowsAffected()
+    if err != nil {
+        http.Error(w, err.Error(), http.StatusInternalServerError)
+        return
+    }
+
+    // If 0 rows were affected, the ID didn't exist in the database
+    if rowsAffected == 0 {
+        http.Error(w, "Task not found", http.StatusNotFound)
+        return
+    }
+
+    w.WriteHeader(http.StatusNoContent)
 }
 
 func (m *TasksModule) parseBool(b bool) *bool { return &b }
