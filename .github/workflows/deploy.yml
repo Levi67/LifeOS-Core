@@ -30,12 +30,16 @@ jobs:
           oauth-secret: ""
           authkey: ${{ secrets.TAILSCALE_AUTHKEY }}
 
+      - name: Wait for Tailscale Network
+        run: sleep 3
+
       - name: Deploy Binary & Restart Service via SSH
         uses: appleboy/scp-action@v0.1.7
         with:
           host: ${{ secrets.LXC_TAILSCALE_IP }}
           username: ${{ secrets.LXC_USER }}
           key: ${{ secrets.LXC_SSH_KEY }}
+          port: 22
           source: "lifeos"
           target: "/opt/lifeos/"
 
@@ -45,6 +49,7 @@ jobs:
           host: ${{ secrets.LXC_TAILSCALE_IP }}
           username: ${{ secrets.LXC_USER }}
           key: ${{ secrets.LXC_SSH_KEY }}
+          port: 22
           script: |
             chmod +x /opt/lifeos/lifeos
             systemctl restart lifeos
