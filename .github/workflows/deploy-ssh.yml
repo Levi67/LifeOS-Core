@@ -1,0 +1,51 @@
+name: Deploy to LXC Container
+
+on:
+  push:
+    branches:
+      - main
+      - development
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.22'
+
+      - name: Build Binary
+        run: |
+          CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o lifeos ./cmd/server
+
+      - name: Connect to Tailscale
+        uses: tailscale/github-action@v2
+        with:
+          oauth-client-id: ""
+          oauth-secret: ""
+          authkey: ${{ secrets.TAILSCALE_AUTHKEY }}
+
+      - name: Deploy Binary & Restart Service via SSH
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.LXC_TAILSCALE_IP }}
+          username: ${{ secrets.LXC_USER }}
+          key: ${{ secrets.LXC_SSH_KEY }}
+          source: "lifeos"
+          target: "/opt/lifeos/"
+
+      - name: Restart Systemd Service
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.LXC_TAILSCALE_IP }}
+          username: ${{ secrets.LXC_USER }}
+          key: ${{ secrets.LXC_SSH_KEY }}
+          script: |
+            chmod +x /opt/lifeos/lifeos
+            systemctl restart lifeos
+            systemctl status lifeos --no-pager
