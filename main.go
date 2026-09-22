@@ -12,6 +12,7 @@ import (
 	"lifeos/internal/core"
 	"lifeos/internal/modules/notes"
 	"lifeos/internal/modules/tasks"
+	"lifeos/internal/modules/habittracker"
 )
 
 // Embed the compiled frontend files from web/dist into the binary.
@@ -41,6 +42,7 @@ func main() {
 	// --- Register Modules Here ---
 	registry.Register(tasks.New())
 	registry.Register(notes.New())
+	registry.Register(habittracker.New())
 
 	if err := registry.InitAll(ctx); err != nil {
 		log.Fatalf("Module initialization error: %v", err)
